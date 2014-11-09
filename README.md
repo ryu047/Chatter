@@ -1,12 +1,4 @@
-# Socket.IO chat example for Heroku
-
-Config updated to run on heroku, and transport set to xhr-polling with a 20s timeout
-
-You can see it in action at: http://socket-io-chat.herokuapp.com/
-
-## Deploying
-
-    heroku create -s cedar
-    git push heroku master
-
-Enjoy!
+This is simple chat application with an option of joining different rooms.
+To start: type in terminal: node app.js
+In Browser, go to--> localhost:8888
+App is also deployed online. Go to --> agile-savannah-6633.herokuapp.com
