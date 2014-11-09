@@ -10,7 +10,7 @@ var server = http.createServer(function(request,response)
 	response.end(fs.readFileSync('newcp.html'));
 });
 
-server.listen(8888);
+server.listen(process.env.PORT  || 8888);
 console.log("Server has started!\n");
 
 var io = socketio.listen(server);
