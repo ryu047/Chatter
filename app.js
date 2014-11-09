@@ -1,87 +1,63 @@
-/**
- * Module dependencies.
- */
+// JavaScript Document
 
-var express = require('express')
-  , stylus = require('stylus')
-  , nib = require('nib')
-  , sio = require('socket.io');
+var http = require('http');
+var fs = require('fs');
+var socketio = require('socket.io');
 
-/**
- * App.
- */
-
-var app = express.createServer();
-
-/**
- * App configuration.
- */
-
-app.configure(function () {
-  app.use(stylus.middleware({ src: __dirname + '/public', compile: compile }));
-  app.use(express.static(__dirname + '/public'));
-  app.set('views', __dirname);
-  app.set('view engine', 'jade');
-
-  function compile (str, path) {
-    return stylus(str)
-      .set('filename', path)
-      .use(nib());
-  };
+var server = http.createServer(function(request,response)
+{
+	response.writeHead(200,{'Content-type':'text/html'});
+	response.end(fs.readFileSync('newcp.html'));
 });
 
-/**
- * App routes.
- */
+server.listen(8888);
+console.log("Server has started!\n");
 
-app.get('/', function (req, res) {
-  res.render('index', { layout: false });
-});
+var io = socketio.listen(server);
+io.set('log level', 1);
 
-/**
- * App listen.
- */
-
-var port = process.env.PORT || 3000;
-app.listen(port, function () {
-  var addr = app.address();
-  console.log('   app listening on http://' + addr.address + ':' + addr.port);
-});
-
-/**
- * Socket.IO server (single process only)
- */
-
-var io = sio.listen(app)
-  , nicknames = {};
-
-// Set our transports
-io.configure(function () { 
-  io.set("transports", ["xhr-polling"]); 
-  io.set("polling duration", 20); 
-});
-
-io.sockets.on('connection', function (socket) {
-  socket.on('user message', function (msg) {
-    socket.broadcast.emit('user message', socket.nickname, msg);
-  });
-
-  socket.on('nickname', function (nick, fn) {
-    if (nicknames[nick]) {
-      fn(true);
-    } else {
-      fn(false);
-      nicknames[nick] = socket.nickname = nick;
-      socket.broadcast.emit('announcement', nick + ' connected');
-      io.sockets.emit('nicknames', nicknames);
-    }
-  });
-
-  socket.on('disconnect', function () {
-    if (!socket.nickname) return;
-
-    delete nicknames[socket.nickname];
-    socket.broadcast.emit('announcement', socket.nickname + ' disconnected');
-    socket.broadcast.emit('nicknames', nicknames);
-  });
+var usernames = {};
+var rooms=['Room1', 'Room2', 'Room3'];
+io.sockets.on('connection', function(socket)
+{
+	socket.on('adduser', function(data)
+	{
+		usernames[data] = data;
+		socket.username = data;
+		socket.room = 'Room1';
+		socket.join('Room1');
+		console.log(data+" has connected to Room1");
+		socket.emit('update', "You have entered Room1");
+		
+		socket.broadcast.to('Room1').emit('update', data+" has entered Room1");
+		socket.emit('roomupdate',rooms,'Room1');
+			
+		
+	});
+	socket.on('switchroom', function(value)
+	{
+		socket.broadcast.to(socket.room).emit('update',socket.username+" has left "+socket.room);
+		socket.leave(socket.room);
+		socket.join(value);
+		socket.room = value;
+		console.log(socket.username+" has connected to "+value);
+		socket.emit('update', "You have joined "+value);
+		socket.broadcast.to(value).emit('update', socket.username+" has joined "+value);
+		socket.emit('roomupdate', rooms, value);
+	});
+	socket.on('leave',function()
+	{
+		console.log(socket.username+" disconnected from "+socket.room);
+		socket.broadcast.to(socket.room).emit('update', socket.username+" has left Room1");
+		socket.leave(socket.room);
+		
+		
+	});
+	socket.on('message', function(data)
+	{
+		console.log(socket.username+" : "+data);
+		io.sockets.in(socket.room).emit('message', {'name':socket.username,'msg':data});
+	});
+	
+		
 });

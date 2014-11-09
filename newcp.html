@@ -1,0 +1,78 @@
+
+<head>
+<title>Chatter</title>
+
+<style type="text/css" >
+#input 
+{ border: 3px solid #999; width: 360px; padding: 10px; font: 12px "Lucida Grande", Sans-Serif; float: left; }
+#messages { height: 300px; width:1000px; overflow: auto; border: 3px solid #666; padding: 20px;}
+#send {float:left;}
+.head {font-size:22px;}
+.type {font-size:16px;}
+</style>
+
+</head>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+	var socket = io.connect();
+	socket.on('connect', function()
+	{	
+		socket.emit('adduser',prompt("What's your name?"));
+	});
+	socket.on('disconnect', function()
+	{
+		$('#messages').append('<li>Server disconnected</li>');
+	});
+	socket.on('update',function(data)
+	{
+		$('#messages').append($('<li></li>').text(data));
+	});
+	socket.on('roomupdate', function(rooms, curr)
+	{
+		$("#rooms").empty();
+		$.each(rooms, function(key, value)
+		{
+			if(value == curr)
+				$("#rooms").append('<div> '+value+' </div>');
+			else
+			{
+				$("#rooms").append('<div><a href="#" onclick="switchroom(\''+value+'\')">'+value+'</a></div>');
+			}
+				
+		});
+	});
+	function switchroom(value)
+	{
+		socket.emit('switchroom', value);
+	
+	}
+	function leave()
+	{
+		socket.emit('leave');
+	}
+	$(function(){
+		$('form').on('submit',function()
+		{	
+			socket.emit('message',$('#input').val());
+			$('#input').val('');
+			return false;
+		});
+		socket.on('message', function(data)
+		{
+			$('#messages').append($('<li></li>').text(data.name+" : "+data.msg));
+		
+		});
+	});
+</script>
+
+<body>
+<b class="head">Chat Box</b>: <ul id="messages"></ul>
+<form action="">
+<i class="type">Type message here:</i><br>
+<input id="input" type="text"/><br /><br /><br>
+<input id="send" type="submit" value="Send"/><br><br>
+<div id="rooms"></div><br>
+<a href="#" onClick="leave()">Leave Chat</a>
+</form>
+</body>
